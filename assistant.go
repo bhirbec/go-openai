@@ -121,6 +121,43 @@ func CreateAssistant(params *CreateAssistantParams) (string, error) {
 	return assistantID, nil
 }
 
+// Modify the assistant
+func ModifyAssistant(assistantID string, params *CreateAssistantParams) error {
+	payloadBytes, err := json.Marshal(params)
+	if err != nil {
+		return fmt.Errorf("failed to marshal assistant payload: %w", err)
+	}
+
+	url := fmt.Sprintf("https://api.openai.com/v1/assistants/%s", assistantID)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("failed to create assistant request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+openaiAPIKey)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("OpenAI-Beta", "assistants=v2")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("assistant request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("assistant creation failed with status %s: %s", resp.Status, string(body))
+	}
+
+	var response map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return fmt.Errorf("failed to decode assistant response: %w", err)
+	}
+
+	fmt.Printf("Assistant modified successfully with ID: %s\n", assistantID)
+	return nil
+}
+
 // DeleteAssistant deletes an assistant by its ID
 func DeleteAssistant(assistantID string) error {
 	url := fmt.Sprintf("https://api.openai.com/v1/assistants/%s", assistantID)
