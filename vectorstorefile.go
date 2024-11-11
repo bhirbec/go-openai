@@ -4,9 +4,28 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 )
+
+type ErrorResponse struct {
+	Error struct {
+		Message string `json:"message"`
+		Type    string `json:"type"`
+		Param   string `json:"param"`
+		Code    string `json:"code"`
+	} `json:"error"`
+}
+
+// Custom error for unsupported file types
+type UnsupportedFileTypeError struct {
+	FileName string
+}
+
+func (e *UnsupportedFileTypeError) Error() string {
+	return fmt.Sprintf("unsupported file type for file: %s", e.FileName)
+}
 
 // VectorStoreFile represents the response for attaching a file to a vector store
 type VectorStoreFile struct {
@@ -50,8 +69,18 @@ func CreateVectorStoreFile(vectorStoreID, fileID string, chunkingStrategy map[st
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		return nil, fmt.Errorf("vector store file creation failed with status %s: %s", resp.Status, string(body))
+		var errorResp ErrorResponse
+		body, _ := io.ReadAll(resp.Body)
+
+		if err := json.Unmarshal(body, &errorResp); err != nil {
+			return nil, fmt.Errorf("vector store file creation failed with status %s: %s", resp.Status, string(body))
+		}
+
+		if errorResp.Error.Code == "unsupported_file" {
+			return nil, &UnsupportedFileTypeError{FileName: fileID}
+		}
+
+		return nil, fmt.Errorf("vector store file creation failed: %s", errorResp.Error.Message)
 	}
 
 	// Decode response to get file attachment details
@@ -92,7 +121,7 @@ func ListVectorStoreFiles(vectorStoreID string) ([]VectorStoreFile, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("list vector store files failed with status %s: %s", resp.Status, string(body))
 	}
 
