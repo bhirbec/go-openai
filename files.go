@@ -8,32 +8,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
-	"path/filepath"
 )
-
-var SupportedExtensions = []string{
-	".c",
-	".cpp",
-	".cs",
-	".css",
-	".doc",
-	".docx",
-	".go",
-	".html",
-	".java",
-	".js",
-	".json",
-	".md",
-	".pdf",
-	".php",
-	".pptx",
-	".py",
-	".rb",
-	".sh",
-	".tex",
-	".ts",
-	".txt",
-}
 
 // File holds response data for a file upload
 type File struct {
@@ -46,20 +21,6 @@ type File struct {
 
 // UploadFile uploads a file as a multi-part form data to ChatGPT
 func UploadFile(filePath string) (string, error) {
-	// Check if the file extension is supported
-	ext := filepath.Ext(filePath)
-	var supported bool
-	for _, e := range SupportedExtensions {
-		if e == ext {
-			supported = true
-			break
-		}
-	}
-
-	if !supported {
-		return "", fmt.Errorf("unsupported file extension: %s", ext)
-	}
-
 	// Open the file
 	file, err := os.Open(filePath)
 	if err != nil {
