@@ -5,11 +5,35 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 )
+
+var SupportedExtensions = []string{
+	".c",
+	".cpp",
+	".cs",
+	".css",
+	".doc",
+	".docx",
+	".go",
+	".html",
+	".java",
+	".js",
+	".json",
+	".md",
+	".pdf",
+	".php",
+	".pptx",
+	".py",
+	".rb",
+	".sh",
+	".tex",
+	".ts",
+	".txt",
+}
 
 // File holds response data for a file upload
 type File struct {
@@ -22,6 +46,21 @@ type File struct {
 
 // UploadFile uploads a file as a multi-part form data to ChatGPT
 func UploadFile(filePath string) (string, error) {
+	// Check if the file extension is supported
+	ext := filepath.Ext(filePath)
+	var supported bool
+	for _, e := range SupportedExtensions {
+		if e == ext {
+			supported = true
+			break
+		}
+	}
+
+	if !supported {
+		return "", fmt.Errorf("unsupported file extension: %s", ext)
+	}
+
+	// Open the file
 	file, err := os.Open(filePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to open file: %w", err)
@@ -104,7 +143,7 @@ func ListFiles() ([]File, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("retrieving files failed with status %s: %s", resp.Status, string(body))
 	}
 
@@ -138,7 +177,7 @@ func RetrieveFile(fileID string) (*File, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("file retrieval failed with status %s: %s", resp.Status, string(body))
 	}
 
@@ -168,7 +207,7 @@ func DeleteFile(fileID string) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
+		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("file deletion failed with status %s: %s", resp.Status, string(body))
 	}
 
