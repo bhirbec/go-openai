@@ -1,3 +1,4 @@
+// XXX: create a method to handle the HTTP request and refactor this code to use it
 package openai
 
 import (
