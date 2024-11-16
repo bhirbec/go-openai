@@ -9,6 +9,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
+	"strings"
 )
 
 // File holds response data for a file upload
@@ -20,16 +21,24 @@ type File struct {
 	Purpose   string `json:"purpose"`
 }
 
-// UploadFile uploads a file as a multi-part form data to ChatGPT
-func UploadFile(filePath string) (string, error) {
-	// Open the file
-	file, err := os.Open(filePath)
+func UploadFile(path string) (string, error) {
+	// Read file content
+	content, err := os.ReadFile(path)
 	if err != nil {
-		return "", fmt.Errorf("failed to open file: %w", err)
+		return "", fmt.Errorf("failed to read file: %w", err)
 	}
-	defer file.Close()
 
-	// Prepare a multi-part form
+	// Check if the file is a .tsx and treat it as a .ts file
+	if strings.HasSuffix(path, ".tsx") {
+		path = strings.TrimSuffix(path, ".tsx") + ".ts"
+	}
+
+	// Use UploadContent
+	return UploadContent(path, content)
+}
+
+func UploadContent(path string, content []byte) (string, error) {
+	// Prepare the request body
 	var requestBody bytes.Buffer
 	multiWriter := multipart.NewWriter(&requestBody)
 
@@ -38,20 +47,19 @@ func UploadFile(filePath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to add purpose field: %w", err)
 	}
-	_, err = purposeWriter.Write([]byte("user_data")) // Replace "user_data" with the actual purpose if different
+	_, err = purposeWriter.Write([]byte("user_data")) // Modify as needed
 	if err != nil {
 		return "", fmt.Errorf("failed to write purpose to form: %w", err)
 	}
 
-	// Add the file field
-	fileWriter, err := multiWriter.CreateFormFile("file", filePath)
+	// Add the content directly
+	fileWriter, err := multiWriter.CreateFormFile("file", path)
 	if err != nil {
 		return "", fmt.Errorf("failed to create form file: %w", err)
 	}
-	// Copy the actual file content into fileWriter
-	_, err = io.Copy(fileWriter, file)
+	_, err = fileWriter.Write(content)
 	if err != nil {
-		return "", fmt.Errorf("failed to write file content to form: %w", err)
+		return "", fmt.Errorf("failed to write content to form: %w", err)
 	}
 
 	// Close the multi-part writer to set the correct boundary
@@ -84,7 +92,7 @@ func UploadFile(filePath string) (string, error) {
 		return "", fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	fmt.Printf("File %s uploaded successfully with ID: %s\n", filePath, f.ID)
+	fmt.Printf("Content for %s uploaded successfully with ID: %s\n", path, f.ID)
 	return f.ID, nil
 }
 
