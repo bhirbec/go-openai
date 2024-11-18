@@ -101,7 +101,7 @@ type VectorStoreFileListResponse struct {
 // ListVectorStoreFiles lists files attached to a specific vector store
 func ListVectorStoreFiles(vectorStoreID string) ([]VectorStoreFile, error) {
 	// Build the request URL
-	url := fmt.Sprintf("https://api.openai.com/v1/vector_stores/%s/files", vectorStoreID)
+	url := fmt.Sprintf("https://api.openai.com/v1/vector_stores/%s/files?limit=100", vectorStoreID)
 
 	// Create the request
 	req, err := http.NewRequest("GET", url, nil)
